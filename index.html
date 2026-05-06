@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CymorAI</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+<!-- Elfsight Script -->
+<script src="https://static.elfsight.com/platform/platform.js" async></script>
+
+<style>
+:root{
+    --neon-green:#22c55e;
+    --neon-blue:#38bdf8;
+    --bg:#020617;
+    --glass:rgba(15,23,42,0.55);
+    --border:rgba(255,255,255,0.08);
+}
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    font-family:'Outfit',sans-serif;
+    background:radial-gradient(circle at top,#0f172a 0%,#020617 60%);
+    color:white;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    overflow:hidden;
+    position:relative;
+}
+
+/* Animated Background Glow */
+body::before{
+    content:'';
+    position:absolute;
+    width:500px;
+    height:500px;
+    background:rgba(56,189,248,0.12);
+    filter:blur(120px);
+    top:-120px;
+    left:-100px;
+    animation:floatGlow 10s infinite alternate ease-in-out;
+}
+
+body::after{
+    content:'';
+    position:absolute;
+    width:400px;
+    height:400px;
+    background:rgba(34,197,94,0.1);
+    filter:blur(120px);
+    bottom:-100px;
+    right:-100px;
+    animation:floatGlow2 12s infinite alternate ease-in-out;
+}
+
+@keyframes floatGlow{
+    from{transform:translateY(0px);}
+    to{transform:translateY(60px);}
+}
+
+@keyframes floatGlow2{
+    from{transform:translateX(0px);}
+    to{transform:translateX(-60px);}
+}
+
+/* Floating Text */
+.floating-text{
+    position:absolute;
+    font-size:8rem;
+    font-weight:800;
+    color:rgba(255,255,255,0.03);
+    user-select:none;
+    pointer-events:none;
+    z-index:0;
+    animation:moveAround 15s infinite alternate ease-in-out;
+}
+
+@keyframes moveAround{
+    0%{
+        transform:translate(-20px,0px) rotate(0deg);
+    }
+    100%{
+        transform:translate(20px,-50px) rotate(5deg);
+    }
+}
+
+/* Main Card */
+.app-card{
+    width:95%;
+    max-width:520px;
+    height:92vh;
+    background:var(--glass);
+    backdrop-filter:blur(25px);
+    border:1px solid var(--border);
+    border-radius:30px;
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+    z-index:2;
+    box-shadow:
+        0 20px 60px rgba(0,0,0,0.5),
+        0 0 30px rgba(34,197,94,0.1);
+    animation:fadeIn 1s ease;
+}
+
+@keyframes fadeIn{
+    from{
+        opacity:0;
+        transform:translateY(30px);
+    }
+    to{
+        opacity:1;
+        transform:translateY(0);
+    }
+}
+
+/* Header */
+header{
+    padding:22px;
+    border-bottom:1px solid rgba(255,255,255,0.08);
+    background:rgba(255,255,255,0.02);
+    position:relative;
+}
+
+.header-title{
+    font-size:28px;
+    font-weight:800;
+    letter-spacing:2px;
+    color:var(--neon-green);
+    text-shadow:0 0 18px var(--neon-green);
+}
+
+.header-sub{
+    margin-top:5px;
+    font-size:13px;
+    color:var(--neon-blue);
+}
+
+.status{
+    position:absolute;
+    right:20px;
+    top:25px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:12px;
+    color:#cbd5e1;
+}
+
+.dot{
+    width:10px;
+    height:10px;
+    border-radius:50%;
+    background:var(--neon-green);
+    box-shadow:0 0 10px var(--neon-green);
+    animation:pulse 1.5s infinite;
+}
+
+@keyframes pulse{
+    0%{transform:scale(1);}
+    50%{transform:scale(1.3);}
+    100%{transform:scale(1);}
+}
+
+/* Chat Area */
+.chat-container{
+    flex:1;
+    overflow-y:auto;
+    padding:15px;
+    position:relative;
+}
+
+/* Scrollbar */
+.chat-container::-webkit-scrollbar{
+    width:5px;
+}
+
+.chat-container::-webkit-scrollbar-thumb{
+    background:var(--neon-blue);
+    border-radius:20px;
+}
+
+/* Top AI Banner */
+.ai-banner{
+    margin:12px;
+    padding:14px;
+    border-radius:18px;
+    background:linear-gradient(
+        135deg,
+        rgba(34,197,94,0.15),
+        rgba(56,189,248,0.15)
+    );
+    border:1px solid rgba(255,255,255,0.08);
+    text-align:center;
+    font-size:14px;
+    color:#e2e8f0;
+    animation:glowCard 3s infinite alternate;
+}
+
+@keyframes glowCard{
+    from{
+        box-shadow:0 0 15px rgba(34,197,94,0.08);
+    }
+    to{
+        box-shadow:0 0 25px rgba(56,189,248,0.15);
+    }
+}
+
+/* Footer */
+.footer{
+    padding:12px;
+    text-align:center;
+    font-size:12px;
+    color:rgba(255,255,255,0.5);
+    border-top:1px solid rgba(255,255,255,0.05);
+    background:rgba(255,255,255,0.02);
+}
+
+.footer span{
+    color:var(--neon-blue);
+    font-weight:600;
+}
+
+/* Responsive */
+@media(max-width:600px){
+    .floating-text{
+        font-size:5rem;
+    }
+
+    .app-card{
+        height:100vh;
+        width:100%;
+        border-radius:0;
+    }
+
+    .header-title{
+        font-size:24px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="floating-text" style="top:10%;left:5%;">
+    CYMOR
+</div>
+
+<div class="floating-text" style="bottom:8%;right:5%;">
+    AI
+</div>
+
+<div class="app-card">
+
+    <header>
+        <div class="header-title">
+            CYMOR AI
+        </div>
+
+        <div class="header-sub">
+            Elite Intelligence v1.0
+        </div>
+
+        <div class="status">
+            <div class="dot"></div>
+            ONLINE
+        </div>
+    </header>
+
+    <div class="ai-banner">
+        🚀 Welcome to the future of intelligence powered by CymorTechServices.
+    </div>
+
+    <div class="chat-container">
+
+        <!-- Elfsight AI Chat Widget -->
+        <div 
+            class="elfsight-app-7302c2be-363a-4d2a-8536-04b3498e8cf2" 
+            data-elfsight-app-lazy>
+        </div>
+
+    </div>
+
+    <div class="footer">
+        Site made by 
+        <span>Legendary Smiley Cymor</span> 
+        | © CymorTechServices2026
+    </div>
+
+</div>
+
+<script>
+
+/* Dynamic Greetings */
+const greetings = [
+    "⚡ Elite AI systems initialized...",
+    "🧠 CymorAI neural systems active...",
+    "🚀 Ready to assist globally...",
+    "🌍 Connected to advanced intelligence..."
+];
+
+let index = 0;
+
+setInterval(() => {
+    document.querySelector(".ai-banner").innerHTML = greetings[index];
+    index = (index + 1) % greetings.length;
+}, 4000);
+
+/* Smooth Entrance Animation */
+window.addEventListener("load", () => {
+    document.querySelector(".app-card").style.opacity = "1";
+});
+
+</script>
+
+</body>
+  </html>
