@@ -2,15 +2,18 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
 <title>CymorAI</title>
 
+<!-- Google Font -->
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
 <!-- Elfsight Script -->
 <script src="https://static.elfsight.com/platform/platform.js" async></script>
 
 <style>
+
 :root{
     --neon-green:#22c55e;
     --neon-blue:#38bdf8;
@@ -23,21 +26,21 @@
     margin:0;
     padding:0;
     box-sizing:border-box;
+    -webkit-tap-highlight-color:transparent;
 }
 
+html,
 body{
+    width:100%;
+    height:100%;
+    overflow:hidden;
     font-family:'Outfit',sans-serif;
     background:radial-gradient(circle at top,#0f172a 0%,#020617 60%);
     color:white;
-    min-height:100vh;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    overflow:hidden;
     position:relative;
 }
 
-/* Animated Background Glow */
+/* Background Glow */
 body::before{
     content:'';
     position:absolute;
@@ -45,9 +48,10 @@ body::before{
     height:500px;
     background:rgba(56,189,248,0.12);
     filter:blur(120px);
-    top:-120px;
-    left:-100px;
+    top:-150px;
+    left:-120px;
     animation:floatGlow 10s infinite alternate ease-in-out;
+    z-index:0;
 }
 
 body::after{
@@ -55,24 +59,33 @@ body::after{
     position:absolute;
     width:400px;
     height:400px;
-    background:rgba(34,197,94,0.1);
+    background:rgba(34,197,94,0.10);
     filter:blur(120px);
-    bottom:-100px;
-    right:-100px;
+    bottom:-120px;
+    right:-120px;
     animation:floatGlow2 12s infinite alternate ease-in-out;
+    z-index:0;
 }
 
 @keyframes floatGlow{
-    from{transform:translateY(0px);}
-    to{transform:translateY(60px);}
+    from{
+        transform:translateY(0px);
+    }
+    to{
+        transform:translateY(60px);
+    }
 }
 
 @keyframes floatGlow2{
-    from{transform:translateX(0px);}
-    to{transform:translateX(-60px);}
+    from{
+        transform:translateX(0px);
+    }
+    to{
+        transform:translateX(-60px);
+    }
 }
 
-/* Floating Text */
+/* Floating Background Text */
 .floating-text{
     position:absolute;
     font-size:8rem;
@@ -88,47 +101,32 @@ body::after{
     0%{
         transform:translate(-20px,0px) rotate(0deg);
     }
+
     100%{
         transform:translate(20px,-50px) rotate(5deg);
     }
 }
 
-/* Main Card */
+/* Main App Container */
 .app-card{
-    width:95%;
-    max-width:520px;
-    height:92vh;
-    background:var(--glass);
-    backdrop-filter:blur(25px);
-    border:1px solid var(--border);
-    border-radius:30px;
-    overflow:hidden;
+    width:100%;
+    height:100dvh;
     display:flex;
     flex-direction:column;
+    background:var(--glass);
+    backdrop-filter:blur(25px);
+    position:relative;
     z-index:2;
-    box-shadow:
-        0 20px 60px rgba(0,0,0,0.5),
-        0 0 30px rgba(34,197,94,0.1);
-    animation:fadeIn 1s ease;
-}
-
-@keyframes fadeIn{
-    from{
-        opacity:0;
-        transform:translateY(30px);
-    }
-    to{
-        opacity:1;
-        transform:translateY(0);
-    }
+    overflow:hidden;
 }
 
 /* Header */
 header{
-    padding:22px;
+    padding:18px;
+    background:rgba(255,255,255,0.03);
     border-bottom:1px solid rgba(255,255,255,0.08);
-    background:rgba(255,255,255,0.02);
     position:relative;
+    z-index:10;
 }
 
 .header-title{
@@ -140,15 +138,16 @@ header{
 }
 
 .header-sub{
-    margin-top:5px;
+    margin-top:4px;
     font-size:13px;
     color:var(--neon-blue);
 }
 
+/* Online Status */
 .status{
     position:absolute;
+    top:20px;
     right:20px;
-    top:25px;
     display:flex;
     align-items:center;
     gap:8px;
@@ -166,34 +165,24 @@ header{
 }
 
 @keyframes pulse{
-    0%{transform:scale(1);}
-    50%{transform:scale(1.3);}
-    100%{transform:scale(1);}
+    0%{
+        transform:scale(1);
+    }
+
+    50%{
+        transform:scale(1.3);
+    }
+
+    100%{
+        transform:scale(1);
+    }
 }
 
-/* Chat Area */
-.chat-container{
-    flex:1;
-    overflow-y:auto;
-    padding:15px;
-    position:relative;
-}
-
-/* Scrollbar */
-.chat-container::-webkit-scrollbar{
-    width:5px;
-}
-
-.chat-container::-webkit-scrollbar-thumb{
-    background:var(--neon-blue);
-    border-radius:20px;
-}
-
-/* Top AI Banner */
+/* AI Banner */
 .ai-banner{
-    margin:12px;
-    padding:14px;
-    border-radius:18px;
+    margin:10px;
+    padding:12px;
+    border-radius:16px;
     background:linear-gradient(
         135deg,
         rgba(34,197,94,0.15),
@@ -201,28 +190,48 @@ header{
     );
     border:1px solid rgba(255,255,255,0.08);
     text-align:center;
-    font-size:14px;
+    font-size:13px;
     color:#e2e8f0;
     animation:glowCard 3s infinite alternate;
+    z-index:5;
 }
 
 @keyframes glowCard{
     from{
         box-shadow:0 0 15px rgba(34,197,94,0.08);
     }
+
     to{
         box-shadow:0 0 25px rgba(56,189,248,0.15);
     }
 }
 
+/* Chat Area */
+.chat-container{
+    flex:1;
+    width:100%;
+    position:relative;
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+}
+
+/* Elfsight Fullscreen Fix */
+.elfsight-app-7302c2be-363a-4d2a-8536-04b3498e8cf2{
+    width:100%;
+    height:100%;
+    flex:1;
+}
+
 /* Footer */
 .footer{
-    padding:12px;
+    padding:10px;
     text-align:center;
-    font-size:12px;
-    color:rgba(255,255,255,0.5);
+    font-size:11px;
+    color:rgba(255,255,255,0.55);
+    background:rgba(255,255,255,0.03);
     border-top:1px solid rgba(255,255,255,0.05);
-    background:rgba(255,255,255,0.02);
+    z-index:10;
 }
 
 .footer span{
@@ -230,38 +239,63 @@ header{
     font-weight:600;
 }
 
-/* Responsive */
-@media(max-width:600px){
-    .floating-text{
-        font-size:5rem;
-    }
+/* Scrollbar */
+::-webkit-scrollbar{
+    width:4px;
+}
 
-    .app-card{
-        height:100vh;
-        width:100%;
-        border-radius:0;
+::-webkit-scrollbar-thumb{
+    background:var(--neon-blue);
+    border-radius:20px;
+}
+
+/* Mobile Optimization */
+@media(max-width:768px){
+
+    .floating-text{
+        font-size:4rem;
     }
 
     .header-title{
-        font-size:24px;
+        font-size:22px;
+    }
+
+    .header-sub{
+        font-size:12px;
+    }
+
+    .footer{
+        font-size:10px;
+        padding:8px;
+    }
+
+    .ai-banner{
+        margin:8px;
+        padding:10px;
+        font-size:12px;
     }
 }
+
 </style>
 </head>
 
 <body>
 
-<div class="floating-text" style="top:10%;left:5%;">
+<!-- Floating Background Text -->
+<div class="floating-text" style="top:10%; left:5%;">
     CYMOR
 </div>
 
-<div class="floating-text" style="bottom:8%;right:5%;">
+<div class="floating-text" style="bottom:8%; right:5%;">
     AI
 </div>
 
+<!-- Main App -->
 <div class="app-card">
 
+    <!-- Header -->
     <header>
+
         <div class="header-title">
             CYMOR AI
         </div>
@@ -274,25 +308,29 @@ header{
             <div class="dot"></div>
             ONLINE
         </div>
+
     </header>
 
+    <!-- AI Banner -->
     <div class="ai-banner">
         🚀 Welcome to the future of intelligence powered by CymorTechServices.
     </div>
 
+    <!-- Chat Area -->
     <div class="chat-container">
 
-        <!-- Elfsight AI Chat Widget -->
-        <div 
-            class="elfsight-app-7302c2be-363a-4d2a-8536-04b3498e8cf2" 
+        <!-- Elfsight AI Widget -->
+        <div
+            class="elfsight-app-7302c2be-363a-4d2a-8536-04b3498e8cf2"
             data-elfsight-app-lazy>
         </div>
 
     </div>
 
+    <!-- Footer -->
     <div class="footer">
-        Site made by 
-        <span>Legendary Smiley Cymor</span> 
+        Site made by
+        <span>Legendary Smiley Cymor</span>
         | © CymorTechServices2026
     </div>
 
@@ -300,7 +338,7 @@ header{
 
 <script>
 
-/* Dynamic Greetings */
+/* Dynamic Greeting Animation */
 const greetings = [
     "⚡ Elite AI systems initialized...",
     "🧠 CymorAI neural systems active...",
@@ -311,16 +349,32 @@ const greetings = [
 let index = 0;
 
 setInterval(() => {
+
     document.querySelector(".ai-banner").innerHTML = greetings[index];
+
     index = (index + 1) % greetings.length;
+
 }, 4000);
 
-/* Smooth Entrance Animation */
+/* Fullscreen Mobile Keyboard Fix */
+function setFullHeight(){
+
+    document.body.style.height = window.innerHeight + "px";
+
+}
+
+window.addEventListener("load", setFullHeight);
+
+window.addEventListener("resize", setFullHeight);
+
+/* Smooth Startup Animation */
 window.addEventListener("load", () => {
+
     document.querySelector(".app-card").style.opacity = "1";
+
 });
 
 </script>
 
 </body>
-  </html>
+</html>
