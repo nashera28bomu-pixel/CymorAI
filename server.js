@@ -8,7 +8,6 @@ import { useMongoAuthState } from './lib/session.js';
 import makeWASocket, {
   fetchLatestBaileysVersion,
   makeCacheableSignalKeyStore,
-  DisconnectReason,
 } from '@whiskeysockets/baileys';
 import pino from 'pino';
 
@@ -44,113 +43,121 @@ app.post('/api/pair', async (req, res) => {
         creds: state.creds,
         keys: makeCacheableSignalKeyStore(state.keys, logger),
       },
+      // Real Ubuntu Chrome fingerprint — critical for pairing to work
       browser: ['Ubuntu', 'Chrome', '120.0.6099.71'],
       printQRInTerminal: false,
-      connectTimeoutMs: 60000,
-      defaultQueryTimeoutMs: 60000,
+      connectTimeoutMs: 120000,
+      defaultQueryTimeoutMs: 120000,
+      keepAliveIntervalMs: 10000, // ping every 10s so socket stays alive while user enters code
+      retryRequestDelayMs: 2000,
     });
 
     sock.ev.on('creds.update', saveCreds);
 
-    // Store session early
-    pairingSessions.set(sessionId, { sock, saveCreds, state, phone: cleanPhone, connected: false });
+    // Store session immediately
+    pairingSessions.set(sessionId, {
+      sock,
+      phone: cleanPhone,
+      connected: false,
+      pairingCode: null,
+      error: null,
+    });
 
-    let pairingCode = null;
+    // Request pairing code once socket fires connection update
     let codeRequested = false;
-
-    // Request pairing code ONLY when socket signals it's ready (not registered)
     sock.ev.on('connection.update', async (update) => {
-      const { connection, isNewLogin, qr } = update;
+      const { connection, lastDisconnect } = update;
 
-      // Socket is open and waiting — request code now
+      // Fire once — when socket is up and creds not yet registered
       if (!codeRequested && !sock.authState.creds.registered) {
         codeRequested = true;
         try {
-          // Small delay to ensure WS handshake is complete
-          await new Promise(r => setTimeout(r, 3000));
-          pairingCode = await sock.requestPairingCode(cleanPhone);
-          pairingCode = pairingCode?.match(/.{1,4}/g)?.join('-') || pairingCode;
-          // Store code so status endpoint can return it
+          // Let the WS fully stabilise before requesting
+          await new Promise(r => setTimeout(r, 4000));
+          let code = await sock.requestPairingCode(cleanPhone);
+          // Format as XXXX-XXXX
+          code = code?.match(/.{1,4}/g)?.join('-') || code;
           const session = pairingSessions.get(sessionId);
-          if (session) session.pairingCode = pairingCode;
+          if (session) session.pairingCode = code;
+          console.log(`✅ Pairing code generated for ${cleanPhone}: ${code}`);
         } catch (e) {
+          console.error('Pairing code error:', e.message);
           const session = pairingSessions.get(sessionId);
           if (session) session.error = e.message;
         }
       }
 
       if (connection === 'open') {
+        console.log(`✅ Session connected: ${sessionId}`);
         const session = pairingSessions.get(sessionId);
         if (session) {
           session.connected = true;
-          const sessionMsg = `🎉 *Smiley Cymor Bot - Session Connected!*
+          // DM the session ID to the user
+          const msg = `🎉 *Smiley Cymor Bot — Session Ready!*
 
 ╔══════════════════════╗
-║  🔐 YOUR SESSION ID  ║
+║   🔐 YOUR SESSION ID   ║
 ╚══════════════════════╝
 
+*Copy this exactly:*
 \`\`\`
 ${sessionId}
 \`\`\`
 
 ━━━━━━━━━━━━━━━━━━━━━━━
-📋 *HOW TO DEPLOY:*
+📋 *DEPLOY STEPS:*
 ━━━━━━━━━━━━━━━━━━━━━━━
-
-1️⃣ Copy your Session ID above
-2️⃣ Fork the bot repo on GitHub
-3️⃣ Deploy to Render/Koyeb/Heroku
-4️⃣ Add SESSION_ID env variable
-5️⃣ Add MONGO_URI env variable
-6️⃣ Deploy and enjoy! 🚀
+1️⃣ Copy the Session ID above
+2️⃣ Go to your Render dashboard
+3️⃣ Add env var: SESSION_ID = (paste)
+4️⃣ Save & redeploy
+5️⃣ Bot comes online! 🚀
 
 ━━━━━━━━━━━━━━━━━━━━━━━
-🌐 *Supported Platforms:*
-▸ Render (render.com)
-▸ Koyeb (koyeb.com)
-▸ Heroku (heroku.com)
-▸ Railway (railway.app)
-▸ VPS (any Linux server)
-━━━━━━━━━━━━━━━━━━━━━━━
+🌐 *Deploy Platforms:*
+▸ render.com  ▸ koyeb.com
+▸ heroku.com  ▸ railway.app
 
 📞 Support: wa.me/254784074568
-
 > 🤖 Powered by Cymor Tech Services`;
 
-          await sock.sendMessage(`${cleanPhone}@s.whatsapp.net`, { text: sessionMsg });
+          try {
+            await sock.sendMessage(`${cleanPhone}@s.whatsapp.net`, { text: msg });
+          } catch (e) {
+            console.error('Could not send session DM:', e.message);
+          }
         }
       }
 
       if (connection === 'close') {
-        pairingSessions.delete(sessionId);
+        console.log('Pairing socket closed for', sessionId);
+        // Don't delete session immediately — let status endpoint report connected
       }
     });
 
-    // Wait up to 12 seconds for the pairing code to be generated
+    // Wait up to 15s for pairing code
     let waited = 0;
-    while (!pairingCode && waited < 12000) {
+    while (waited < 15000) {
       await new Promise(r => setTimeout(r, 500));
       waited += 500;
-      // Check if session stored a code meanwhile
       const session = pairingSessions.get(sessionId);
-      if (session?.pairingCode) pairingCode = session.pairingCode;
+      if (session?.pairingCode) {
+        return res.json({ success: true, pairingCode: session.pairingCode, sessionId });
+      }
       if (session?.error) {
-        return res.json({ success: false, error: 'Could not generate pairing code. Make sure the number is on WhatsApp.' });
+        return res.json({ success: false, error: 'Could not generate pairing code. Make sure this number is registered on WhatsApp and try again.' });
       }
     }
 
-    if (!pairingCode) {
-      return res.json({ success: false, error: 'Timed out getting pairing code. Try again.' });
-    }
-
-    res.json({ success: true, pairingCode, sessionId });
+    return res.json({ success: false, error: 'Timed out. Please try again.' });
 
   } catch (err) {
+    console.error('Pair endpoint error:', err.message);
     res.json({ success: false, error: err.message });
   }
 });
 
-// Check pairing status
+// Check if session is connected
 app.get('/api/status/:sessionId', (req, res) => {
   const session = pairingSessions.get(req.params.sessionId);
   res.json({ connected: session?.connected || false });
@@ -184,26 +191,23 @@ app.get('/api/admin/users', adminAuth, async (req, res) => {
 });
 
 app.post('/api/admin/ban', adminAuth, async (req, res) => {
-  const { jid } = req.body;
-  await User.findOneAndUpdate({ jid }, { role: 'banned' });
+  await User.findOneAndUpdate({ jid: req.body.jid }, { role: 'banned' });
   res.json({ success: true });
 });
 
 app.post('/api/admin/unban', adminAuth, async (req, res) => {
-  const { jid } = req.body;
-  await User.findOneAndUpdate({ jid }, { role: 'user' });
+  await User.findOneAndUpdate({ jid: req.body.jid }, { role: 'user' });
   res.json({ success: true });
 });
 
-// Serve pages
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public/pair.html')));
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public/admin.html')));
 
 const PORT = config.port || 3000;
 connectDB().then(() => {
   app.listen(PORT, () => {
-    console.log(`🌐 Web server running on port ${PORT}`);
-    console.log(`🔗 Pair page: http://localhost:${PORT}`);
+    console.log(`🌐 Web server on port ${PORT}`);
+    console.log(`🔗 Pair: http://localhost:${PORT}`);
     console.log(`🔧 Admin: http://localhost:${PORT}/admin`);
   });
 });
