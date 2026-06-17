@@ -6,38 +6,35 @@ import makeWASocket, {
 } from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
 import pino from 'pino';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { connectDB } from './database/db.js';
 import { useMongoAuthState } from './lib/session.js';
 import { config } from './config.js';
 import {
   handleMessage,
   handleGroupParticipant,
-  handleStatusUpdate,
   handleRevoke,
   cacheMessage,
 } from './handler.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-// Suppress noisy logs
 const logger = pino({ level: 'silent' });
 
 let sock = null;
 let retryCount = 0;
 const MAX_RETRIES = 10;
 
-// Export sock for use in web server
-export { sock };
-
 async function startBot() {
   await connectDB();
 
-  const sessionId = config.sessionId || 'SmileyCymor';
+  const sessionId = config.sessionId;
 
-  // Use MongoDB auth state for persistence across restarts
+  // If no SESSION_ID is set, don't start the bot — wait for pairing via web
+  if (!sessionId) {
+    console.log('⚠️  No SESSION_ID set. Bot is in pairing mode.');
+    console.log('🌐 Open the web URL and pair your number first.');
+    console.log('📋 Then add SESSION_ID to your environment variables and redeploy.');
+    return;
+  }
+
   const { state, saveCreds } = await useMongoAuthState(sessionId);
   const { version } = await fetchLatestBaileysVersion();
 
@@ -51,40 +48,40 @@ async function startBot() {
       creds: state.creds,
       keys: makeCacheableSignalKeyStore(state.keys, logger),
     },
-    // Browser emulation - appear as Ubuntu Chrome for real pairing code
-    browser: ['Smiley Cymor Bot', 'Chrome', '120.0.0'],
+    browser: ['Ubuntu', 'Chrome', '120.0.6099.71'],
     printQRInTerminal: false,
     syncFullHistory: false,
     generateHighQualityLinkPreview: true,
-    getMessage: async (key) => {
-      return { conversation: '' };
-    },
+    connectTimeoutMs: 60000,
+    defaultQueryTimeoutMs: 60000,
+    keepAliveIntervalMs: 25000,
+    getMessage: async () => ({ conversation: '' }),
   });
 
-  // Handle pairing code request for web server
-  if (!sock.authState.creds.registered) {
-    // Web server will call this
-    global.sockInstance = sock;
-  } else {
-    global.sockInstance = sock;
-  }
-
-  // Save credentials on update
   sock.ev.on('creds.update', saveCreds);
 
-  // Connection events
   sock.ev.on('connection.update', async (update) => {
-    const { connection, lastDisconnect, qr, isNewLogin } = update;
+    const { connection, lastDisconnect } = update;
 
     if (connection === 'close') {
-      const reason = new Boom(lastDisconnect?.error)?.output?.statusCode;
-      console.log(`❌ Disconnected. Reason: ${reason}`);
+      const statusCode = new Boom(lastDisconnect?.error)?.output?.statusCode;
+      console.log(`❌ Disconnected. Reason: ${statusCode}`);
 
-      if (reason === DisconnectReason.loggedOut) {
-        console.log('🔒 Logged out. Please re-pair.');
+      // 401 = logged out, 403 = banned — do not retry
+      if (statusCode === DisconnectReason.loggedOut || statusCode === 403) {
+        console.log('🔒 Logged out / banned. Clear SESSION_ID and re-pair.');
         retryCount = 0;
         process.exit(0);
-      } else if (retryCount < MAX_RETRIES) {
+      }
+
+      // 408 = connection timeout during initial pairing — do not loop
+      if (statusCode === 408 && !state.creds.registered) {
+        console.log('⏳ Pairing timed out. Please re-pair via the web URL.');
+        return;
+      }
+
+      // All other disconnects — retry with backoff
+      if (retryCount < MAX_RETRIES) {
         retryCount++;
         const delay = Math.min(retryCount * 5000, 30000);
         console.log(`🔄 Reconnecting in ${delay / 1000}s... (${retryCount}/${MAX_RETRIES})`);
@@ -101,8 +98,7 @@ async function startBot() {
       console.log(`\n✅ ${config.botName} Connected!`);
       console.log(`📱 Bot Number: +${botNumber}`);
       console.log(`👑 Owner: ${config.ownerNumber}`);
-      console.log(`🌐 Web: http://localhost:${config.port}`);
-      console.log(`\n🚀 Ready! Type ${config.prefixes[0]}menu to see all commands\n`);
+      console.log(`\n🚀 Ready! Prefixes: ${config.prefixes.join(' ')}\n`);
 
       // Send welcome message to owner
       const welcomeMsg = `🎉 *${config.botName} is Now Online!* 🎉
@@ -129,7 +125,7 @@ async function startBot() {
 ✅ Privacy Tools
 ✅ Auto Status View/Like
 ✅ Deleted Msg Recovery
-✅ View Once Saver
+✅ View Once Saver (.vv)
 
 ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -138,22 +134,27 @@ Type *.menu* to see all commands!
 > 👑 Owner: Legendary Smiley Cymor
 > 🤖 Powered by Cymor Tech Services`;
 
-      await sock.sendMessage(`${config.ownerNumber}@s.whatsapp.net`, { text: welcomeMsg });
+      try {
+        await sock.sendMessage(`${config.ownerNumber}@s.whatsapp.net`, { text: welcomeMsg });
+      } catch {}
     }
   });
 
   // Messages
   sock.ev.on('messages.upsert', async (m) => {
-    // Cache all incoming messages for deleted msg recovery
     for (const msg of m.messages || []) {
       cacheMessage(msg);
+      // Auto view status
+      if (msg.key.remoteJid === 'status@broadcast') {
+        try { await sock.readMessages([msg.key]); } catch {}
+      }
     }
     if (m.type === 'notify') {
       await handleMessage(sock, m);
     }
   });
 
-  // Message deletions (revoke)
+  // Deleted messages
   sock.ev.on('messages.update', async (updates) => {
     for (const update of updates) {
       if (update.update?.messageStubType === proto.WebMessageInfo.StubType.REVOKE) {
@@ -162,28 +163,14 @@ Type *.menu* to see all commands!
     }
   });
 
-  // Group participant updates (welcome message)
+  // Group events
   sock.ev.on('group-participants.update', async (event) => {
     await handleGroupParticipant(sock, event);
-  });
-
-  // Status updates (auto view/like)
-  sock.ev.on('messages.upsert', async (m) => {
-    for (const msg of m.messages || []) {
-      if (msg.key.remoteJid === 'status@broadcast') {
-        await handleStatusUpdate(sock, {
-          id: msg.key.id,
-          type: 'status',
-          participant: msg.key.participant,
-        });
-      }
-    }
   });
 
   return sock;
 }
 
-// Anti-crash
 process.on('uncaughtException', (err) => {
   console.error('Uncaught Exception:', err.message);
 });
@@ -192,7 +179,6 @@ process.on('unhandledRejection', (err) => {
   console.error('Unhandled Rejection:', err?.message || err);
 });
 
-// Start
 startBot();
 
 export { startBot };
