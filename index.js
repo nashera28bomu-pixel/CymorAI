@@ -6,7 +6,7 @@ import makeWASocket, {
 } from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
 import pino from 'pino';
-import { connectDB } from './database/db.js';
+import { connectDB, Session } from './database/db.js';
 import { useMongoAuthState } from './lib/session.js';
 import { config } from './config.js';
 import {
@@ -17,29 +17,42 @@ import {
 } from './handler.js';
 
 const logger = pino({ level: 'silent' });
+const BOT_SESSION_KEY = 'SmileyCymorBot_Main';
 
 let sock = null;
 let retryCount = 0;
-const MAX_RETRIES = 10;
+const MAX_RETRIES = 15;
+
+async function isRegistered() {
+  try {
+    const creds = await Session.findOne({ sessionId: `${BOT_SESSION_KEY}:creds` });
+    return !!creds?.data?.registered;
+  } catch {
+    return false;
+  }
+}
 
 async function startBot() {
   await connectDB();
 
-  const sessionId = config.sessionId;
+  // Check if bot has been paired yet
+  const registered = await isRegistered();
 
-  // If no SESSION_ID is set, don't start the bot — wait for pairing via web
-  if (!sessionId) {
-    console.log('⚠️  No SESSION_ID set. Bot is in pairing mode.');
-    console.log('🌐 Open the web URL and pair your number first.');
-    console.log('📋 Then add SESSION_ID to your environment variables and redeploy.');
+  if (!registered) {
+    console.log('⚠️  Bot not paired yet.');
+    console.log(`🌐 Open your Render URL to pair your number.`);
+    console.log('🔄 Checking again in 30 seconds...');
+    // Poll every 30s until paired, then auto-start
+    setTimeout(startBot, 30000);
     return;
   }
 
-  const { state, saveCreds } = await useMongoAuthState(sessionId);
+  console.log(`\n🤖 Starting ${config.botName}...`);
+
+  const { state, saveCreds } = await useMongoAuthState(BOT_SESSION_KEY);
   const { version } = await fetchLatestBaileysVersion();
 
-  console.log(`\n🤖 Starting ${config.botName}...`);
-  console.log(`📦 Baileys version: ${version.join('.')}`);
+  console.log(`📦 Baileys v${version.join('.')}`);
 
   sock = makeWASocket({
     version,
@@ -65,50 +78,52 @@ async function startBot() {
 
     if (connection === 'close') {
       const statusCode = new Boom(lastDisconnect?.error)?.output?.statusCode;
-      console.log(`❌ Disconnected. Reason: ${statusCode}`);
+      console.log(`❌ Disconnected. Code: ${statusCode}`);
 
-      // 401 = logged out, 403 = banned — do not retry
+      // Logged out or banned — stop
       if (statusCode === DisconnectReason.loggedOut || statusCode === 403) {
-        console.log('🔒 Logged out / banned. Clear SESSION_ID and re-pair.');
+        console.log('🔒 Session ended. Re-pair via the web URL.');
+        // Clear stored creds so pairing page works again
+        try {
+          await Session.deleteMany({ sessionId: { $regex: `^${BOT_SESSION_KEY}` } });
+          console.log('🗑️  Cleared old session. Ready to re-pair.');
+        } catch {}
         retryCount = 0;
-        process.exit(0);
-      }
-
-      // 408 = connection timeout during initial pairing — do not loop
-      if (statusCode === 408 && !state.creds.registered) {
-        console.log('⏳ Pairing timed out. Please re-pair via the web URL.');
+        // Restart polling loop
+        setTimeout(startBot, 5000);
         return;
       }
 
-      // All other disconnects — retry with backoff
+      // Retry with exponential backoff
       if (retryCount < MAX_RETRIES) {
         retryCount++;
-        const delay = Math.min(retryCount * 5000, 30000);
+        const delay = Math.min(retryCount * 5000, 60000);
         console.log(`🔄 Reconnecting in ${delay / 1000}s... (${retryCount}/${MAX_RETRIES})`);
         setTimeout(startBot, delay);
       } else {
-        console.log('❌ Max retries reached. Exiting.');
-        process.exit(1);
+        console.log('❌ Max retries reached. Will try again in 5 minutes.');
+        retryCount = 0;
+        setTimeout(startBot, 300000);
       }
     }
 
     if (connection === 'open') {
       retryCount = 0;
-      const botNumber = sock.user.id.split(':')[0];
+      const botNumber = sock.user?.id?.split(':')[0] || 'Unknown';
       console.log(`\n✅ ${config.botName} Connected!`);
-      console.log(`📱 Bot Number: +${botNumber}`);
-      console.log(`👑 Owner: ${config.ownerNumber}`);
-      console.log(`\n🚀 Ready! Prefixes: ${config.prefixes.join(' ')}\n`);
+      console.log(`📱 Number: +${botNumber}`);
+      console.log(`👑 Owner: +${config.ownerNumber}`);
+      console.log(`🚀 Ready! Prefixes: ${config.prefixes.join(' ')}\n`);
 
-      // Send welcome message to owner
-      const welcomeMsg = `🎉 *${config.botName} is Now Online!* 🎉
+      try {
+        await sock.sendMessage(`${config.ownerNumber}@s.whatsapp.net`, {
+          text: `🎉 *${config.botName} is Now Online!* 🎉
 
 ╔══════════════════════╗
 ║   🤖 SYSTEM ONLINE 🤖   ║
 ╚══════════════════════╝
 
-✅ Bot successfully connected!
-📱 Number: +${botNumber}
+✅ Connected as: +${botNumber}
 🧠 AI: Groq (LLaMA3-8B)
 💾 Database: MongoDB Atlas
 ⚡ Status: Fully Operational
@@ -126,16 +141,13 @@ async function startBot() {
 ✅ Auto Status View/Like
 ✅ Deleted Msg Recovery
 ✅ View Once Saver (.vv)
-
 ━━━━━━━━━━━━━━━━━━━━━━━
 
 Type *.menu* to see all commands!
 
 > 👑 Owner: Legendary Smiley Cymor
-> 🤖 Powered by Cymor Tech Services`;
-
-      try {
-        await sock.sendMessage(`${config.ownerNumber}@s.whatsapp.net`, { text: welcomeMsg });
+> 🤖 Powered by Cymor Tech Services`,
+        });
       } catch {}
     }
   });
@@ -144,7 +156,6 @@ Type *.menu* to see all commands!
   sock.ev.on('messages.upsert', async (m) => {
     for (const msg of m.messages || []) {
       cacheMessage(msg);
-      // Auto view status
       if (msg.key.remoteJid === 'status@broadcast') {
         try { await sock.readMessages([msg.key]); } catch {}
       }
