@@ -1,474 +1,121 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Smiley Cymor Bot — Connect</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet"/>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --green: #25D366;
-      --green-dark: #128C7E;
-      --green-light: #DCF8C6;
-      --bg: #0a0f0a;
-      --surface: #111811;
-      --surface2: #1a2a1a;
-      --border: #1f3a1f;
-      --text: #e8f5e8;
-      --text-muted: #7aab7a;
-      --accent: #39ff14;
+      --green: #25D366; --green-dark: #128C7E; --accent: #39ff14;
+      --bg: #0a0f0a; --surface: #111811; --surface2: #1a2a1a; --border: #1f3a1f;
+      --text: #e8f5e8; --muted: #7aab7a;
     }
-
     body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Inter', sans-serif;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-      padding: 0;
+      background: var(--bg); color: var(--text);
+      font-family: 'Inter', sans-serif; min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center;
       overflow-x: hidden;
     }
-
-    /* Animated background */
     body::before {
-      content: '';
-      position: fixed;
-      inset: 0;
-      background: radial-gradient(ellipse 80% 50% at 50% -10%, #0d3b0d55, transparent),
-                  radial-gradient(ellipse 60% 40% at 80% 80%, #00330011, transparent);
-      pointer-events: none;
-      z-index: 0;
+      content: ''; position: fixed; inset: 0;
+      background: radial-gradient(ellipse 80% 50% at 50% -10%, #0d3b0d44, transparent);
+      pointer-events: none; z-index: 0;
     }
-
-    .particles {
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      z-index: 0;
-      overflow: hidden;
-    }
-
+    .particles { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
     .particle {
-      position: absolute;
-      width: 3px;
-      height: 3px;
-      background: var(--green);
-      border-radius: 50%;
-      opacity: 0;
+      position: absolute; width: 3px; height: 3px;
+      background: var(--green); border-radius: 50%; opacity: 0;
       animation: float linear infinite;
     }
-
     @keyframes float {
       0% { transform: translateY(100vh) scale(0); opacity: 0; }
-      10% { opacity: 0.6; }
-      90% { opacity: 0.3; }
+      10% { opacity: 0.5; } 90% { opacity: 0.2; }
       100% { transform: translateY(-100px) scale(1); opacity: 0; }
     }
-
-    /* Header */
     header {
-      width: 100%;
-      padding: 16px 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-bottom: 1px solid var(--border);
-      background: var(--surface);
-      position: relative;
-      z-index: 10;
+      width: 100%; padding: 16px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--border); background: var(--surface);
+      position: relative; z-index: 10;
     }
+    .logo-header { display: flex; align-items: center; gap: 10px; font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 18px; color: var(--green); }
+    .logo-header img { width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--green); }
+    .dot { width: 8px; height: 8px; background: var(--green); border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(37,211,102,0.4); } 50% { box-shadow: 0 0 0 8px rgba(37,211,102,0); } }
 
-    .logo-header {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-family: 'Space Grotesk', sans-serif;
-      font-weight: 700;
-      font-size: 18px;
-      color: var(--green);
-    }
+    main { width: 100%; max-width: 480px; padding: 32px 20px 80px; position: relative; z-index: 1; }
 
-    .logo-header img {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      border: 2px solid var(--green);
-    }
-
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      background: var(--green);
-      border-radius: 50%;
-      animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(37,211,102,0.4); }
-      50% { box-shadow: 0 0 0 8px rgba(37,211,102,0); }
-    }
-
-    /* Main content */
-    main {
-      width: 100%;
-      max-width: 480px;
-      padding: 32px 20px 80px;
-      position: relative;
-      z-index: 1;
-    }
-
-    /* Hero section */
-    .hero {
-      text-align: center;
-      margin-bottom: 40px;
-    }
-
+    .hero { text-align: center; margin-bottom: 32px; }
     .bot-logo {
-      width: 110px;
-      height: 110px;
-      border-radius: 50%;
+      width: 110px; height: 110px; border-radius: 50%;
       border: 3px solid var(--green);
-      box-shadow: 0 0 40px rgba(37,211,102,0.3), 0 0 80px rgba(37,211,102,0.1);
-      margin: 0 auto 20px;
-      display: block;
+      box-shadow: 0 0 40px rgba(37,211,102,0.3);
+      margin: 0 auto 20px; display: block;
       animation: glow 3s ease-in-out infinite;
     }
-
     @keyframes glow {
-      0%, 100% { box-shadow: 0 0 40px rgba(37,211,102,0.3), 0 0 80px rgba(37,211,102,0.1); }
-      50% { box-shadow: 0 0 60px rgba(37,211,102,0.5), 0 0 120px rgba(37,211,102,0.2); }
+      0%,100% { box-shadow: 0 0 40px rgba(37,211,102,0.3); }
+      50% { box-shadow: 0 0 70px rgba(37,211,102,0.5); }
     }
-
-    .hero h1 {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 28px;
-      font-weight: 700;
-      background: linear-gradient(135deg, var(--green), #39ff14, var(--green-dark));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      margin-bottom: 8px;
-    }
-
-    .hero p {
-      color: var(--text-muted);
-      font-size: 14px;
-      line-height: 1.6;
-    }
+    .hero h1 { font-family: 'Space Grotesk', sans-serif; font-size: 26px; font-weight: 700; background: linear-gradient(135deg, var(--green), #39ff14); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 8px; }
+    .hero p { color: var(--muted); font-size: 13px; line-height: 1.6; }
 
     /* Steps */
-    .steps {
-      display: flex;
-      justify-content: center;
-      gap: 0;
-      margin: 28px 0;
-      position: relative;
-    }
+    .steps { display: flex; justify-content: center; margin: 24px 0; position: relative; }
+    .steps::before { content: ''; position: absolute; top: 16px; left: 15%; right: 15%; height: 2px; background: var(--border); }
+    .step { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; z-index: 1; }
+    .step-num { width: 32px; height: 32px; border-radius: 50%; background: var(--surface2); border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--muted); transition: all 0.3s; }
+    .step.active .step-num { background: var(--green); border-color: var(--green); color: #000; }
+    .step.done .step-num { background: var(--green-dark); border-color: var(--green-dark); color: #fff; }
+    .step span { font-size: 10px; color: var(--muted); font-weight: 500; }
 
-    .steps::before {
-      content: '';
-      position: absolute;
-      top: 16px;
-      left: 15%;
-      right: 15%;
-      height: 2px;
-      background: var(--border);
-    }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 24px; margin-bottom: 16px; }
+    .card-title { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 14px; }
 
-    .step {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 6px;
-      flex: 1;
-      z-index: 1;
-    }
-
-    .step-num {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      background: var(--surface2);
-      border: 2px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--text-muted);
-      transition: all 0.3s;
-    }
-
-    .step.active .step-num {
-      background: var(--green);
-      border-color: var(--green);
-      color: #000;
-    }
-
-    .step.done .step-num {
-      background: var(--green-dark);
-      border-color: var(--green-dark);
-      color: #fff;
-    }
-
-    .step span {
-      font-size: 10px;
-      color: var(--text-muted);
-      font-weight: 500;
-    }
-
-    /* Card */
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 28px;
-      margin-bottom: 20px;
-    }
-
-    .card-title {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      margin-bottom: 16px;
-    }
-
-    /* Input */
-    .input-group {
-      display: flex;
-      gap: 10px;
-    }
-
-    .phone-input {
-      flex: 1;
-      background: var(--surface2);
-      border: 1.5px solid var(--border);
-      border-radius: 12px;
-      padding: 14px 16px;
-      color: var(--text);
-      font-family: 'Inter', sans-serif;
-      font-size: 15px;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-
-    .phone-input::placeholder { color: var(--text-muted); }
+    .input-group { display: flex; gap: 10px; }
+    .phone-input { flex: 1; background: var(--surface2); border: 1.5px solid var(--border); border-radius: 12px; padding: 14px 16px; color: var(--text); font-family: 'Inter', sans-serif; font-size: 15px; outline: none; transition: border-color 0.2s; }
+    .phone-input::placeholder { color: var(--muted); }
     .phone-input:focus { border-color: var(--green); }
+    .btn-primary { background: var(--green); color: #000; border: none; border-radius: 12px; padding: 14px 20px; font-weight: 700; font-size: 14px; font-family: 'Inter', sans-serif; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+    .btn-primary:hover { background: #20c05a; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .hint { font-size: 12px; color: var(--muted); margin-top: 10px; line-height: 1.5; }
 
-    .btn-primary {
-      background: var(--green);
-      color: #000;
-      border: none;
-      border-radius: 12px;
-      padding: 14px 20px;
-      font-weight: 700;
-      font-size: 14px;
-      font-family: 'Inter', sans-serif;
-      cursor: pointer;
-      transition: all 0.2s;
-      white-space: nowrap;
-    }
-
-    .btn-primary:hover { background: #20c05a; transform: translateY(-1px); }
-    .btn-primary:active { transform: translateY(0); }
-    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-
-    .hint {
-      font-size: 12px;
-      color: var(--text-muted);
-      margin-top: 10px;
-      line-height: 1.5;
-    }
-
-    /* Pairing code display */
     #code-section { display: none; }
+    .code-box { background: var(--surface2); border: 2px solid var(--green); border-radius: 16px; padding: 24px; text-align: center; margin-bottom: 16px; }
+    .code-label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; }
+    .code-display { font-family: 'Space Grotesk', monospace; font-size: 38px; font-weight: 700; color: var(--accent); letter-spacing: 0.15em; text-shadow: 0 0 20px rgba(57,255,20,0.4); }
+    .code-timer { margin-top: 8px; font-size: 12px; color: var(--muted); }
 
-    .code-box {
-      background: var(--surface2);
-      border: 2px solid var(--green);
-      border-radius: 16px;
-      padding: 24px;
-      text-align: center;
-      margin-bottom: 16px;
-    }
-
-    .code-label {
-      font-size: 12px;
-      color: var(--text-muted);
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      margin-bottom: 12px;
-    }
-
-    .code-display {
-      font-family: 'Space Grotesk', monospace;
-      font-size: 36px;
-      font-weight: 700;
-      color: var(--accent);
-      letter-spacing: 0.15em;
-      text-shadow: 0 0 20px rgba(57,255,20,0.4);
-    }
-
-    .code-timer {
-      margin-top: 10px;
-      font-size: 12px;
-      color: var(--text-muted);
-    }
-
-    .instructions {
-      background: var(--surface2);
-      border-radius: 14px;
-      padding: 18px;
-      margin-bottom: 16px;
-    }
-
-    .instruction-item {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      padding: 8px 0;
-      font-size: 13px;
-      color: var(--text);
-      border-bottom: 1px solid var(--border);
-    }
-
+    .instructions { background: var(--surface2); border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+    .instruction-item { display: flex; align-items: flex-start; gap: 10px; padding: 7px 0; font-size: 13px; color: var(--text); border-bottom: 1px solid var(--border); }
     .instruction-item:last-child { border-bottom: none; }
+    .step-badge { min-width: 22px; height: 22px; background: var(--green); color: #000; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
 
-    .step-badge {
-      min-width: 22px;
-      height: 22px;
-      background: var(--green);
-      color: #000;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 11px;
-      font-weight: 700;
-      flex-shrink: 0;
-      margin-top: 1px;
-    }
-
-    /* Success */
-    #success-section {
-      display: none;
-      text-align: center;
-    }
-
-    .success-icon {
-      font-size: 64px;
-      margin-bottom: 16px;
-      animation: bounce 0.6s ease;
-    }
-
-    @keyframes bounce {
-      0% { transform: scale(0); }
-      60% { transform: scale(1.2); }
-      100% { transform: scale(1); }
-    }
-
-    .session-box {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 16px;
-      font-family: monospace;
-      font-size: 12px;
-      color: var(--green);
-      word-break: break-all;
-      text-align: left;
-      margin: 16px 0;
-    }
-
-    .copy-btn {
-      width: 100%;
-      background: var(--surface2);
-      border: 1.5px solid var(--green);
-      border-radius: 10px;
-      padding: 12px;
-      color: var(--green);
-      font-weight: 600;
-      font-size: 14px;
-      cursor: pointer;
-      transition: all 0.2s;
-      font-family: 'Inter', sans-serif;
-    }
-
-    .copy-btn:hover { background: var(--green); color: #000; }
-
-    /* Loading spinner */
-    .spinner {
-      display: inline-block;
-      width: 16px;
-      height: 16px;
-      border: 2px solid #000;
-      border-top-color: transparent;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      vertical-align: middle;
-      margin-right: 6px;
-    }
-
+    .waiting { text-align: center; padding: 12px; font-size: 13px; color: var(--muted); }
+    .spinner-wrap { display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--green); border-radius: 50%; animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* Alert */
-    .alert {
-      padding: 12px 16px;
-      border-radius: 10px;
-      font-size: 13px;
-      margin-bottom: 16px;
-      display: none;
-    }
+    #success-section { display: none; text-align: center; }
+    .success-icon { font-size: 70px; margin-bottom: 16px; animation: bounce 0.6s ease; }
+    @keyframes bounce { 0% { transform: scale(0); } 60% { transform: scale(1.2); } 100% { transform: scale(1); } }
 
-    .alert-error { background: #2a0a0a; border: 1px solid #8b0000; color: #ff6b6b; }
-    .alert-info { background: #0a1a0a; border: 1px solid var(--border); color: var(--text-muted); }
-
-    /* Features */
-    .features {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-top: 20px;
-    }
-
-    .feature {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 14px;
-      font-size: 12px;
-    }
-
+    .features { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+    .feature { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; font-size: 12px; }
     .feature-icon { font-size: 20px; margin-bottom: 6px; }
     .feature-name { font-weight: 600; color: var(--text); margin-bottom: 2px; }
-    .feature-desc { color: var(--text-muted); font-size: 11px; }
+    .feature-desc { color: var(--muted); font-size: 11px; }
 
-    /* Footer */
-    footer {
-      text-align: center;
-      padding: 24px;
-      font-size: 12px;
-      color: var(--text-muted);
-      border-top: 1px solid var(--border);
-      position: relative;
-      z-index: 1;
-    }
+    .alert { padding: 12px 16px; border-radius: 10px; font-size: 13px; margin-bottom: 14px; display: none; }
+    .alert-error { background: #2a0a0a; border: 1px solid #8b0000; color: #ff6b6b; }
 
+    footer { text-align: center; padding: 20px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--border); position: relative; z-index: 1; width: 100%; }
     footer a { color: var(--green); text-decoration: none; }
 
-    @media (max-width: 480px) {
-      .hero h1 { font-size: 22px; }
-      .code-display { font-size: 28px; }
-      .features { grid-template-columns: 1fr 1fr; }
-    }
+    .btn-spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #000; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 6px; }
   </style>
 </head>
 <body>
@@ -477,121 +124,86 @@
 
 <header>
   <div class="logo-header">
-    <img src="/logo.png" alt="Smiley Cymor Bot"/>
+    <img src="/logo.png" alt="Bot"/>
     Smiley Cymor Bot
   </div>
-  <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-muted)">
-    <div class="status-dot"></div>
-    Online
+  <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)">
+    <div class="dot"></div> Online
   </div>
 </header>
 
 <main>
   <div class="hero">
-    <img src="/logo.png" alt="Smiley Cymor Bot" class="bot-logo"/>
+    <img src="/logo.png" alt="Bot" class="bot-logo"/>
     <h1>Connect Your Bot</h1>
-    <p>Enter your WhatsApp number to get a pairing code.<br/>Your session ID will be sent to your WhatsApp DM.</p>
+    <p>Enter your WhatsApp number to pair.<br/>Instant. No stress! 🚀</p>
   </div>
 
   <div class="steps">
-    <div class="step active" id="step1">
-      <div class="step-num">1</div>
-      <span>Number</span>
-    </div>
-    <div class="step" id="step2">
-      <div class="step-num">2</div>
-      <span>Pair</span>
-    </div>
-    <div class="step" id="step3">
-      <div class="step-num">3</div>
-      <span>Deploy</span>
-    </div>
+    <div class="step active" id="step1"><div class="step-num">1</div><span>Number</span></div>
+    <div class="step" id="step2"><div class="step-num">2</div><span>Pair</span></div>
+    <div class="step" id="step3"><div class="step-num">3</div><span>Live!</span></div>
   </div>
 
-  <div id="alert" class="alert"></div>
+  <div id="alert" class="alert alert-error"></div>
 
-  <!-- Step 1: Phone input -->
+  <!-- Step 1 -->
   <div id="phone-section">
     <div class="card">
       <div class="card-title">📱 Your WhatsApp Number</div>
       <div class="input-group">
         <input type="tel" class="phone-input" id="phone" placeholder="254712345678" maxlength="15"/>
-        <button class="btn-primary" id="pair-btn" onclick="requestPair()">
-          Get Code
-        </button>
+        <button class="btn-primary" id="pair-btn" onclick="requestPair()">Get Code</button>
       </div>
-      <p class="hint">Enter your number with country code (no + or spaces).<br/>Example: 254712345678 for Kenya 🇰🇪</p>
+      <p class="hint">Include country code, no + or spaces.<br/>Kenya example: 254712345678 🇰🇪</p>
     </div>
-
     <div class="features">
       <div class="feature"><div class="feature-icon">🤖</div><div class="feature-name">AI Powered</div><div class="feature-desc">Groq LLaMA3 AI</div></div>
       <div class="feature"><div class="feature-icon">🎮</div><div class="feature-name">90+ Commands</div><div class="feature-desc">Games, media, tools</div></div>
       <div class="feature"><div class="feature-icon">💰</div><div class="feature-name">Economy</div><div class="feature-desc">Coins, levels, shop</div></div>
-      <div class="feature"><div class="feature-icon">🔒</div><div class="feature-name">Privacy Tools</div><div class="feature-desc">Ghost, view once</div></div>
-      <div class="feature"><div class="feature-icon">👥</div><div class="feature-name">Group Mgmt</div><div class="feature-desc">Anti-spam, welcome</div></div>
+      <div class="feature"><div class="feature-icon">🔒</div><div class="feature-name">Privacy</div><div class="feature-desc">Ghost, view once</div></div>
+      <div class="feature"><div class="feature-icon">👥</div><div class="feature-name">Groups</div><div class="feature-desc">Anti-spam, welcome</div></div>
       <div class="feature"><div class="feature-icon">🎵</div><div class="feature-name">Downloads</div><div class="feature-desc">TikTok, IG, audio</div></div>
     </div>
   </div>
 
-  <!-- Step 2: Pairing code -->
+  <!-- Step 2 -->
   <div id="code-section">
     <div class="card">
       <div class="code-box">
         <div class="code-label">🔐 Your Pairing Code</div>
         <div class="code-display" id="code-display">••••-••••</div>
-        <div class="code-timer" id="code-timer">Expires in 60 seconds</div>
+        <div class="code-timer" id="code-timer">Valid for 60 seconds</div>
       </div>
-
       <div class="instructions">
-        <div class="instruction-item">
-          <div class="step-badge">1</div>
-          <span>Open WhatsApp on your phone</span>
-        </div>
-        <div class="instruction-item">
-          <div class="step-badge">2</div>
-          <span>Go to <strong>Settings → Linked Devices</strong></span>
-        </div>
-        <div class="instruction-item">
-          <div class="step-badge">3</div>
-          <span>Tap <strong>Link a Device</strong></span>
-        </div>
-        <div class="instruction-item">
-          <div class="step-badge">4</div>
-          <span>Tap <strong>Link with phone number instead</strong></span>
-        </div>
-        <div class="instruction-item">
-          <div class="step-badge">5</div>
-          <span>Enter the pairing code above</span>
-        </div>
+        <div class="instruction-item"><div class="step-badge">1</div><span>Open WhatsApp on your phone</span></div>
+        <div class="instruction-item"><div class="step-badge">2</div><span>Go to <strong>Settings → Linked Devices</strong></span></div>
+        <div class="instruction-item"><div class="step-badge">3</div><span>Tap <strong>Link a Device</strong></span></div>
+        <div class="instruction-item"><div class="step-badge">4</div><span>Tap <strong>Link with phone number instead</strong></span></div>
+        <div class="instruction-item"><div class="step-badge">5</div><span>Enter the code above — bot saves automatically!</span></div>
       </div>
-
-      <div id="waiting-msg" style="text-align:center;color:var(--text-muted);font-size:13px;padding:8px">
-        ⏳ Waiting for you to enter the code in WhatsApp...
+      <div class="waiting">
+        <div class="spinner-wrap"><div class="spinner"></div> Waiting for you to enter the code...</div>
       </div>
     </div>
   </div>
 
   <!-- Step 3: Success -->
   <div id="success-section">
-    <div class="card" style="text-align:center">
+    <div class="card">
       <div class="success-icon">🎉</div>
-      <h2 style="font-family:'Space Grotesk',sans-serif;color:var(--green);margin-bottom:8px">Connected!</h2>
-      <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px">Your Session ID has been sent to your WhatsApp DM. Check your messages!</p>
-
-      <div style="background:var(--surface2);border-radius:12px;padding:16px;margin-bottom:16px;text-align:left">
-        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em">Session ID</div>
-        <div class="session-box" id="session-display">Loading...</div>
-        <button class="copy-btn" onclick="copySession()">📋 Copy Session ID</button>
-      </div>
-
-      <div style="background:var(--surface2);border-radius:12px;padding:16px;text-align:left">
-        <div style="font-size:11px;color:var(--text-muted);margin-bottom:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em">Deploy to</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <a href="https://render.com" target="_blank" style="background:var(--border);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text);text-decoration:none;font-weight:600">Render</a>
-          <a href="https://app.koyeb.com" target="_blank" style="background:var(--border);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text);text-decoration:none;font-weight:600">Koyeb</a>
-          <a href="https://heroku.com" target="_blank" style="background:var(--border);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text);text-decoration:none;font-weight:600">Heroku</a>
-          <a href="https://railway.app" target="_blank" style="background:var(--border);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text);text-decoration:none;font-weight:600">Railway</a>
+      <h2 style="font-family:'Space Grotesk',sans-serif;color:var(--green);margin-bottom:8px;font-size:24px">Bot is Live!</h2>
+      <p style="color:var(--muted);font-size:13px;margin-bottom:20px">Your bot is now connected and running! Check your WhatsApp for a welcome message.</p>
+      <div style="background:var(--surface2);border-radius:12px;padding:16px;margin-bottom:12px">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em">✅ What's Active</div>
+        <div style="font-size:13px;line-height:2;color:var(--text)">
+          🤖 AI Chat &nbsp;•&nbsp; 💰 Economy &nbsp;•&nbsp; 🎮 Games<br/>
+          🎵 Downloads &nbsp;•&nbsp; 👥 Groups &nbsp;•&nbsp; 👻 Privacy<br/>
+          👁️ Auto View Status &nbsp;•&nbsp; 🗑️ Deleted Msgs
         </div>
+      </div>
+      <div style="background:var(--surface2);border-radius:12px;padding:14px;font-size:13px;color:var(--muted);text-align:left">
+        💡 <strong style="color:var(--text)">Tip:</strong> Send <code style="background:var(--border);padding:2px 6px;border-radius:4px;color:var(--green)">.menu</code> to your bot to see all 90+ commands!
       </div>
     </div>
   </div>
@@ -603,29 +215,20 @@
 </footer>
 
 <script>
-  // Floating particles
+  // Particles
   const container = document.getElementById('particles');
-  for (let i = 0; i < 25; i++) {
+  for (let i = 0; i < 20; i++) {
     const p = document.createElement('div');
     p.className = 'particle';
     p.style.left = Math.random() * 100 + '%';
     p.style.animationDuration = (8 + Math.random() * 12) + 's';
     p.style.animationDelay = (Math.random() * 8) + 's';
-    p.style.width = p.style.height = (2 + Math.random() * 4) + 'px';
+    p.style.width = p.style.height = (2 + Math.random() * 3) + 'px';
     container.appendChild(p);
   }
 
-  let currentSessionId = '';
-  let timerInterval;
-  let pollInterval;
-
-  function showAlert(msg, type = 'error') {
-    const el = document.getElementById('alert');
-    el.className = `alert alert-${type}`;
-    el.textContent = msg;
-    el.style.display = 'block';
-    setTimeout(() => el.style.display = 'none', 5000);
-  }
+  let currentPhone = '';
+  let timerInterval, pollInterval;
 
   function setStep(n) {
     [1,2,3].forEach(i => {
@@ -634,15 +237,21 @@
     });
   }
 
+  function showAlert(msg) {
+    const el = document.getElementById('alert');
+    el.textContent = msg;
+    el.style.display = 'block';
+    setTimeout(() => el.style.display = 'none', 6000);
+  }
+
   async function requestPair() {
     const phone = document.getElementById('phone').value.replace(/\D/g, '');
-    if (!phone || phone.length < 10 || phone.length > 15) {
-      return showAlert('Please enter a valid phone number with country code');
-    }
+    if (!phone || phone.length < 10) return showAlert('Enter a valid number with country code');
 
+    currentPhone = phone;
     const btn = document.getElementById('pair-btn');
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span>Getting code...';
+    btn.innerHTML = '<span class="btn-spinner"></span>Getting code...';
 
     try {
       const res = await fetch('/api/pair', {
@@ -653,28 +262,27 @@
       const data = await res.json();
 
       if (!data.success) {
-        showAlert(data.error || 'Failed to get pairing code');
+        showAlert(data.error || 'Failed to get pairing code. Try again.');
         btn.disabled = false;
         btn.textContent = 'Get Code';
         return;
       }
 
-      currentSessionId = data.sessionId;
       document.getElementById('code-display').textContent = data.pairingCode;
       document.getElementById('phone-section').style.display = 'none';
       document.getElementById('code-section').style.display = 'block';
       setStep(2);
 
-      // Countdown timer
+      // Countdown
       let secs = 60;
       timerInterval = setInterval(() => {
         secs--;
-        document.getElementById('code-timer').textContent = `Expires in ${secs} seconds`;
+        document.getElementById('code-timer').textContent = `Valid for ${secs} seconds`;
         if (secs <= 0) clearInterval(timerInterval);
       }, 1000);
 
       // Poll for connection
-      pollInterval = setInterval(checkStatus, 2000);
+      pollInterval = setInterval(checkConnected, 2500);
 
     } catch (e) {
       showAlert('Network error. Please try again.');
@@ -683,30 +291,20 @@
     }
   }
 
-  async function checkStatus() {
+  async function checkConnected() {
     try {
-      const res = await fetch('/api/status/' + currentSessionId);
+      const res = await fetch('/api/pairstatus?phone=' + currentPhone);
       const data = await res.json();
       if (data.connected) {
         clearInterval(pollInterval);
         clearInterval(timerInterval);
         document.getElementById('code-section').style.display = 'none';
         document.getElementById('success-section').style.display = 'block';
-        document.getElementById('session-display').textContent = currentSessionId;
         setStep(3);
       }
     } catch {}
   }
 
-  function copySession() {
-    navigator.clipboard.writeText(currentSessionId).then(() => {
-      const btn = event.target;
-      btn.textContent = '✅ Copied!';
-      setTimeout(() => btn.textContent = '📋 Copy Session ID', 2000);
-    });
-  }
-
-  // Enter key
   document.getElementById('phone').addEventListener('keypress', e => {
     if (e.key === 'Enter') requestPair();
   });
