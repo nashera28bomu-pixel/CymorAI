@@ -10,7 +10,6 @@ import makeWASocket, {
   makeCacheableSignalKeyStore,
   DisconnectReason,
 } from '@whiskeysockets/baileys';
-import { Boom } from '@hapi/boom';
 import pino from 'pino';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -21,10 +20,9 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Session store for active pairing sessions
 const pairingSessions = new Map();
 
-// ─── PAIRING ENDPOINT ───────────────────────────────────────────────
+// ─── PAIRING ENDPOINT ────────────────────────────────────────────────
 app.post('/api/pair', async (req, res) => {
   const { phone } = req.body;
   if (!phone || !/^\d{10,15}$/.test(phone.replace(/\D/g, ''))) {
@@ -32,7 +30,7 @@ app.post('/api/pair', async (req, res) => {
   }
 
   const cleanPhone = phone.replace(/\D/g, '');
-  const sessionId = `session_${cleanPhone}_${Date.now()}`;
+  const sessionId = `SmileyCymor_${cleanPhone}_${Date.now()}`;
 
   try {
     await connectDB();
@@ -46,34 +44,45 @@ app.post('/api/pair', async (req, res) => {
         creds: state.creds,
         keys: makeCacheableSignalKeyStore(state.keys, logger),
       },
-      browser: ['Smiley Cymor Bot', 'Chrome', '120.0.0'],
+      browser: ['Ubuntu', 'Chrome', '120.0.6099.71'],
       printQRInTerminal: false,
+      connectTimeoutMs: 60000,
+      defaultQueryTimeoutMs: 60000,
     });
 
     sock.ev.on('creds.update', saveCreds);
 
-    // Wait for socket to be ready then request pairing code
-    await new Promise(r => setTimeout(r, 2000));
-
-    let pairingCode;
-    try {
-      pairingCode = await sock.requestPairingCode(cleanPhone);
-      pairingCode = pairingCode?.match(/.{1,4}/g)?.join('-') || pairingCode;
-    } catch (e) {
-      return res.json({ success: false, error: 'Failed to get pairing code. Make sure the number is registered on WhatsApp.' });
-    }
-
-    // Store session
+    // Store session early
     pairingSessions.set(sessionId, { sock, saveCreds, state, phone: cleanPhone, connected: false });
 
-    // Listen for connection
+    let pairingCode = null;
+    let codeRequested = false;
+
+    // Request pairing code ONLY when socket signals it's ready (not registered)
     sock.ev.on('connection.update', async (update) => {
-      const { connection } = update;
+      const { connection, isNewLogin, qr } = update;
+
+      // Socket is open and waiting — request code now
+      if (!codeRequested && !sock.authState.creds.registered) {
+        codeRequested = true;
+        try {
+          // Small delay to ensure WS handshake is complete
+          await new Promise(r => setTimeout(r, 3000));
+          pairingCode = await sock.requestPairingCode(cleanPhone);
+          pairingCode = pairingCode?.match(/.{1,4}/g)?.join('-') || pairingCode;
+          // Store code so status endpoint can return it
+          const session = pairingSessions.get(sessionId);
+          if (session) session.pairingCode = pairingCode;
+        } catch (e) {
+          const session = pairingSessions.get(sessionId);
+          if (session) session.error = e.message;
+        }
+      }
+
       if (connection === 'open') {
         const session = pairingSessions.get(sessionId);
         if (session) {
           session.connected = true;
-          // Send session ID to the user via WhatsApp DM
           const sessionMsg = `🎉 *Smiley Cymor Bot - Session Connected!*
 
 ╔══════════════════════╗
@@ -96,14 +105,14 @@ ${sessionId}
 6️⃣ Deploy and enjoy! 🚀
 
 ━━━━━━━━━━━━━━━━━━━━━━━
-🌐 Supported Platforms:
+🌐 *Supported Platforms:*
 ▸ Render (render.com)
 ▸ Koyeb (koyeb.com)
 ▸ Heroku (heroku.com)
 ▸ Railway (railway.app)
 ▸ VPS (any Linux server)
-
 ━━━━━━━━━━━━━━━━━━━━━━━
+
 📞 Support: wa.me/254784074568
 
 > 🤖 Powered by Cymor Tech Services`;
@@ -111,12 +120,31 @@ ${sessionId}
           await sock.sendMessage(`${cleanPhone}@s.whatsapp.net`, { text: sessionMsg });
         }
       }
+
       if (connection === 'close') {
         pairingSessions.delete(sessionId);
       }
     });
 
+    // Wait up to 12 seconds for the pairing code to be generated
+    let waited = 0;
+    while (!pairingCode && waited < 12000) {
+      await new Promise(r => setTimeout(r, 500));
+      waited += 500;
+      // Check if session stored a code meanwhile
+      const session = pairingSessions.get(sessionId);
+      if (session?.pairingCode) pairingCode = session.pairingCode;
+      if (session?.error) {
+        return res.json({ success: false, error: 'Could not generate pairing code. Make sure the number is on WhatsApp.' });
+      }
+    }
+
+    if (!pairingCode) {
+      return res.json({ success: false, error: 'Timed out getting pairing code. Try again.' });
+    }
+
     res.json({ success: true, pairingCode, sessionId });
+
   } catch (err) {
     res.json({ success: false, error: err.message });
   }
@@ -167,7 +195,7 @@ app.post('/api/admin/unban', adminAuth, async (req, res) => {
   res.json({ success: true });
 });
 
-// Serve pair.html and admin.html
+// Serve pages
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public/pair.html')));
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public/admin.html')));
 
