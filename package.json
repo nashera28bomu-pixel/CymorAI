@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "node index.js",
+    "start": "node start.js",
     "web": "node server.js"
   },
   "dependencies": {
@@ -20,7 +20,7 @@
     "node-cache": "^5.1.2",
     "pino": "^8.17.0",
     "pino-pretty": "^10.3.0",
-    "jimp": "^0.22.10",
+    "jimp": "^1.6.0",
     "node-fetch": "^3.3.2",
     "cheerio": "^1.0.0-rc.12",
     "moment": "^2.29.4",
@@ -35,5 +35,6 @@
   },
   "engines": {
     "node": ">=18.0.0"
-  }
+  },
+  "npmrc": "legacy-peer-deps=true"
 }
