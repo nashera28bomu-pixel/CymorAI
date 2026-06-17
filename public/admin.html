@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin — Smiley Cymor Bot</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --green: #25D366; --green-dark: #128C7E; --accent: #39ff14;
+      --bg: #080d08; --surface: #0f170f; --surface2: #162116; --border: #1d321d;
+      --text: #e2f0e2; --muted: #6b9a6b; --red: #ff4444; --orange: #ff9500; --blue: #4da6ff;
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; min-height: 100vh; }
+
+    /* Login */
+    #login-screen {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .login-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+      padding: 40px; width: 100%; max-width: 360px; text-align: center;
+    }
+    .login-card img { width: 80px; height: 80px; border-radius: 50%; border: 2px solid var(--green); margin-bottom: 16px; }
+    .login-card h1 { font-family: 'Space Grotesk', sans-serif; font-size: 22px; color: var(--green); margin-bottom: 6px; }
+    .login-card p { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+    input[type=password] {
+      width: 100%; background: var(--surface2); border: 1.5px solid var(--border); border-radius: 10px;
+      padding: 13px 16px; color: var(--text); font-size: 15px; outline: none; margin-bottom: 12px;
+      font-family: 'Inter', sans-serif; transition: border-color 0.2s;
+    }
+    input[type=password]:focus { border-color: var(--green); }
+    .btn { width: 100%; background: var(--green); color: #000; border: none; border-radius: 10px; padding: 13px; font-weight: 700; font-size: 14px; cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.2s; }
+    .btn:hover { background: #20c05a; }
+    .err { color: var(--red); font-size: 13px; margin-top: 8px; display: none; }
+
+    /* Dashboard */
+    #dashboard { display: none; }
+
+    header {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 16px 24px; display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .header-logo { display: flex; align-items: center; gap: 10px; }
+    .header-logo img { width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--green); }
+    .header-logo span { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 18px; color: var(--green); }
+    .header-right { display: flex; align-items: center; gap: 16px; font-size: 13px; color: var(--muted); }
+    .online-badge { display: flex; align-items: center; gap: 6px; }
+    .dot { width: 8px; height: 8px; background: var(--green); border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(37,211,102,0.4); } 50% { box-shadow: 0 0 0 6px rgba(37,211,102,0); } }
+    .logout-btn { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: 12px; font-family: 'Inter', sans-serif; transition: all 0.2s; }
+    .logout-btn:hover { border-color: var(--red); color: var(--red); }
+
+    .content { padding: 24px; max-width: 1200px; margin: 0 auto; }
+
+    /* Stats grid */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 28px; }
+    .stat-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px;
+      position: relative; overflow: hidden;
+    }
+    .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+    .stat-green::before { background: var(--green); }
+    .stat-blue::before { background: var(--blue); }
+    .stat-orange::before { background: var(--orange); }
+    .stat-red::before { background: var(--red); }
+    .stat-label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
+    .stat-value { font-family: 'Space Grotesk', sans-serif; font-size: 32px; font-weight: 700; }
+    .stat-green .stat-value { color: var(--green); }
+    .stat-blue .stat-value { color: var(--blue); }
+    .stat-orange .stat-value { color: var(--orange); }
+    .stat-red .stat-value { color: var(--red); }
+    .stat-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+
+    /* Panel */
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 22px; }
+    .panel-title { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
+
+    /* Chart bars */
+    .chart { display: flex; align-items: flex-end; gap: 6px; height: 100px; }
+    .bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .bar { width: 100%; background: var(--green); border-radius: 4px 4px 0 0; transition: height 0.5s ease; min-height: 2px; opacity: 0.8; }
+    .bar:hover { opacity: 1; }
+    .bar-label { font-size: 9px; color: var(--muted); }
+
+    /* Today breakdown */
+    .today-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .today-item:last-child { border-bottom: none; }
+    .today-val { font-weight: 700; color: var(--green); }
+
+    /* User table */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; padding: 8px 12px; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid var(--border); }
+    td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--surface2); }
+
+    .role-badge { padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+    .role-user { background: #1a2a1a; color: var(--muted); }
+    .role-premium { background: #2a2000; color: var(--orange); }
+    .role-vip { background: #001a2a; color: var(--blue); }
+    .role-admin { background: #002200; color: var(--green); }
+    .role-banned { background: #2a0000; color: var(--red); }
+
+    .action-btn { padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; border: none; font-family: 'Inter', sans-serif; transition: all 0.2s; }
+    .ban-btn { background: #2a0000; color: var(--red); }
+    .ban-btn:hover { background: var(--red); color: #fff; }
+    .unban-btn { background: #002200; color: var(--green); }
+    .unban-btn:hover { background: var(--green); color: #000; }
+
+    /* Broadcast */
+    .broadcast-area { width: 100%; background: var(--surface2); border: 1.5px solid var(--border); border-radius: 10px; padding: 12px 16px; color: var(--text); font-family: 'Inter', sans-serif; font-size: 14px; outline: none; resize: vertical; min-height: 80px; transition: border-color 0.2s; }
+    .broadcast-area:focus { border-color: var(--green); }
+    .broadcast-btn { margin-top: 10px; background: var(--green); color: #000; border: none; border-radius: 10px; padding: 12px 20px; font-weight: 700; font-size: 14px; cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.2s; }
+    .broadcast-btn:hover { background: #20c05a; }
+    .toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface); border: 1px solid var(--green); border-radius: 12px; padding: 12px 20px; font-size: 13px; color: var(--green); font-weight: 600; transform: translateY(100px); opacity: 0; transition: all 0.3s; z-index: 999; }
+    .toast.show { transform: translateY(0); opacity: 1; }
+
+    @media (max-width: 640px) {
+      .grid2 { grid-template-columns: 1fr; }
+      .content { padding: 16px; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Login Screen -->
+<div id="login-screen">
+  <div class="login-card">
+    <img src="/logo.png" alt="Bot"/>
+    <h1>Admin Panel</h1>
+    <p>Smiley Cymor Bot — Cymor Tech Services</p>
+    <input type="password" id="pass-input" placeholder="Enter admin password" onkeypress="if(event.key==='Enter')login()"/>
+    <button class="btn" onclick="login()">Login</button>
+    <div class="err" id="login-err">Incorrect password</div>
+  </div>
+</div>
+
+<!-- Dashboard -->
+<div id="dashboard">
+  <header>
+    <div class="header-logo">
+      <img src="/logo.png" alt="Bot"/>
+      <span>Admin Panel</span>
+    </div>
+    <div class="header-right">
+      <div class="online-badge"><div class="dot"></div><span>System Online</span></div>
+      <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+  </header>
+
+  <div class="content">
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card stat-green">
+        <div class="stat-label">Total Users</div>
+        <div class="stat-value" id="s-users">—</div>
+        <div class="stat-sub">All registered</div>
+      </div>
+      <div class="stat-card stat-orange">
+        <div class="stat-label">Premium</div>
+        <div class="stat-value" id="s-premium">—</div>
+        <div class="stat-sub">+ VIP users</div>
+      </div>
+      <div class="stat-card stat-blue">
+        <div class="stat-label">Subscribers</div>
+        <div class="stat-value" id="s-subs">—</div>
+        <div class="stat-sub">Broadcast list</div>
+      </div>
+      <div class="stat-card stat-red">
+        <div class="stat-label">Banned</div>
+        <div class="stat-value" id="s-banned">—</div>
+        <div class="stat-sub">Blocked users</div>
+      </div>
+      <div class="stat-card stat-green">
+        <div class="stat-label">Cmds Today</div>
+        <div class="stat-value" id="s-cmds">—</div>
+        <div class="stat-sub">Commands run</div>
+      </div>
+      <div class="stat-card stat-blue">
+        <div class="stat-label">Active Today</div>
+        <div class="stat-value" id="s-active">—</div>
+        <div class="stat-sub">Unique users</div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <!-- 7-day chart -->
+      <div class="panel">
+        <div class="panel-title">📊 Commands — Last 7 Days</div>
+        <div class="chart" id="chart"></div>
+      </div>
+
+      <!-- Today breakdown -->
+      <div class="panel">
+        <div class="panel-title">📅 Today's Activity</div>
+        <div class="today-item"><span>Messages Received</span><span class="today-val" id="t-msgs">—</span></div>
+        <div class="today-item"><span>Commands Run</span><span class="today-val" id="t-cmds">—</span></div>
+        <div class="today-item"><span>Active Users</span><span class="today-val" id="t-active">—</span></div>
+        <div class="today-item"><span>Errors</span><span class="today-val" id="t-errors" style="color:var(--red)">—</span></div>
+      </div>
+    </div>
+
+    <!-- Broadcast -->
+    <div class="panel" style="margin-bottom:20px">
+      <div class="panel-title">📢 Broadcast Message</div>
+      <textarea class="broadcast-area" id="bc-text" placeholder="Type your broadcast message here..."></textarea>
+      <button class="broadcast-btn" onclick="sendBroadcast()">📢 Send to All Subscribers</button>
+    </div>
+
+    <!-- Users table -->
+    <div class="panel">
+      <div class="panel-title">👥 Recent Users</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Number</th>
+              <th>Role</th>
+              <th>Coins</th>
+              <th>Level</th>
+              <th>Cmds</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="users-table"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  let adminPass = '';
+
+  function login() {
+    const pass = document.getElementById('pass-input').value;
+    if (!pass) return;
+    adminPass = pass;
+    fetch('/api/admin/stats?password=' + encodeURIComponent(pass))
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) {
+          document.getElementById('login-err').style.display = 'block';
+          adminPass = '';
+        } else {
+          document.getElementById('login-screen').style.display = 'none';
+          document.getElementById('dashboard').style.display = 'block';
+          loadDashboard(data);
+          loadUsers();
+        }
+      });
+  }
+
+  function logout() {
+    adminPass = '';
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('dashboard').style.display = 'none';
+    document.getElementById('pass-input').value = '';
+  }
+
+  function loadDashboard(data) {
+    document.getElementById('s-users').textContent = data.totalUsers || 0;
+    document.getElementById('s-premium').textContent = (data.premiumUsers || 0) + (data.vipUsers || 0);
+    document.getElementById('s-subs').textContent = data.subscribers || 0;
+    document.getElementById('s-banned').textContent = data.bannedUsers || 0;
+    document.getElementById('s-cmds').textContent = data.today?.commandsRun || 0;
+    document.getElementById('s-active').textContent = data.today?.activeUsers?.length || 0;
+    document.getElementById('t-msgs').textContent = data.today?.messagesReceived || 0;
+    document.getElementById('t-cmds').textContent = data.today?.commandsRun || 0;
+    document.getElementById('t-active').textContent = data.today?.activeUsers?.length || 0;
+    document.getElementById('t-errors').textContent = data.today?.errors || 0;
+
+    // Chart
+    if (data.recent7?.length) {
+      const max = Math.max(...data.recent7.map(d => d.commandsRun || 1), 1);
+      const chartEl = document.getElementById('chart');
+      chartEl.innerHTML = '';
+      const sorted = [...data.recent7].reverse();
+      sorted.forEach(d => {
+        const pct = Math.max(((d.commandsRun || 0) / max) * 100, 2);
+        const day = new Date(d.date).toLocaleDateString('en', { weekday: 'short' });
+        chartEl.innerHTML += `<div class="bar-wrap"><div class="bar" style="height:${pct}%" title="${d.commandsRun} commands"></div><div class="bar-label">${day}</div></div>`;
+      });
+    }
+
+    // Refresh every 30 seconds
+    setTimeout(() => {
+      fetch('/api/admin/stats?password=' + encodeURIComponent(adminPass))
+        .then(r => r.json()).then(loadDashboard);
+    }, 30000);
+  }
+
+  function loadUsers() {
+    fetch('/api/admin/users?password=' + encodeURIComponent(adminPass))
+      .then(r => r.json())
+      .then(users => {
+        const tbody = document.getElementById('users-table');
+        tbody.innerHTML = '';
+        users.forEach(u => {
+          const num = u.jid.split('@')[0];
+          const banned = u.role === 'banned';
+          tbody.innerHTML += `
+            <tr>
+              <td>${u.name || '—'}</td>
+              <td style="font-family:monospace;font-size:12px">+${num}</td>
+              <td><span class="role-badge role-${u.role}">${u.role}</span></td>
+              <td>${u.coins || 0}</td>
+              <td>${u.level || 1}</td>
+              <td>${u.stats?.commandsUsed || 0}</td>
+              <td>
+                ${banned
+                  ? `<button class="action-btn unban-btn" onclick="banUser('${u.jid}', false)">Unban</button>`
+                  : `<button class="action-btn ban-btn" onclick="banUser('${u.jid}', true)">Ban</button>`}
+              </td>
+            </tr>`;
+        });
+      });
+  }
+
+  async function banUser(jid, ban) {
+    const endpoint = ban ? '/api/admin/ban' : '/api/admin/unban';
+    await fetch(endpoint + '?password=' + encodeURIComponent(adminPass), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jid }),
+    });
+    showToast(ban ? '🚫 User banned' : '✅ User unbanned');
+    loadUsers();
+  }
+
+  async function sendBroadcast() {
+    const text = document.getElementById('bc-text').value.trim();
+    if (!text) return;
+    // Broadcast goes through owner WhatsApp command for security
+    showToast('📢 Use .broadcast command in WhatsApp to send to all users');
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+  }
+
+  document.getElementById('pass-input').addEventListener('keypress', e => {
+    if (e.key === 'Enter') login();
+  });
+</script>
+</body>
+</html>
