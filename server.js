@@ -8,7 +8,6 @@ import { useMongoAuthState } from './lib/session.js';
 import makeWASocket, {
   fetchLatestBaileysVersion,
   makeCacheableSignalKeyStore,
-  DisconnectReason,
 } from '@whiskeysockets/baileys';
 import pino from 'pino';
 
@@ -20,7 +19,23 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Fixed session key — no SESSION_ID env var needed
+const BOT_SESSION_KEY = 'SmileyCymorBot_Main';
+
 const pairingSessions = new Map();
+
+// Called by index.js to check if bot is already paired
+export async function isBotPaired() {
+  try {
+    const { Session } = await import('./database/db.js');
+    const creds = await Session.findOne({ sessionId: `${BOT_SESSION_KEY}:creds` });
+    return !!creds?.data?.registered;
+  } catch {
+    return false;
+  }
+}
+
+export { BOT_SESSION_KEY };
 
 // ─── PAIRING ENDPOINT ────────────────────────────────────────────────
 app.post('/api/pair', async (req, res) => {
@@ -30,11 +45,23 @@ app.post('/api/pair', async (req, res) => {
   }
 
   const cleanPhone = phone.replace(/\D/g, '');
-  const sessionId = `SmileyCymor_${cleanPhone}_${Date.now()}`;
+
+  // Kill any existing pairing session for this phone
+  for (const [key, session] of pairingSessions.entries()) {
+    if (session.phone === cleanPhone) {
+      try { session.sock?.end(); } catch {}
+      if (session.keepAlive) clearInterval(session.keepAlive);
+      pairingSessions.delete(key);
+    }
+  }
+
+  const tempSessionId = `pair_${cleanPhone}_${Date.now()}`;
 
   try {
     await connectDB();
-    const { state, saveCreds } = await useMongoAuthState(sessionId);
+
+    // Use the FIXED session key so creds go straight into the right slot
+    const { state, saveCreds } = await useMongoAuthState(BOT_SESSION_KEY);
     const { version } = await fetchLatestBaileysVersion();
 
     const sock = makeWASocket({
@@ -46,127 +73,134 @@ app.post('/api/pair', async (req, res) => {
       },
       browser: ['Ubuntu', 'Chrome', '120.0.6099.71'],
       printQRInTerminal: false,
-      connectTimeoutMs: 300000,       // 5 minutes
-      defaultQueryTimeoutMs: 300000,  // 5 minutes
-      keepAliveIntervalMs: 5000,      // ping every 5 seconds
-      retryRequestDelayMs: 1000,
+      connectTimeoutMs: 300000,
+      defaultQueryTimeoutMs: 300000,
+      keepAliveIntervalMs: 5000,
     });
 
     sock.ev.on('creds.update', saveCreds);
 
-    pairingSessions.set(sessionId, {
+    const sessionObj = {
       sock,
       phone: cleanPhone,
       connected: false,
       pairingCode: null,
       error: null,
-      keepAliveTimer: null,
-    });
+      keepAlive: null,
+    };
+    pairingSessions.set(tempSessionId, sessionObj);
 
     let codeRequested = false;
 
     sock.ev.on('connection.update', async (update) => {
-      const { connection, lastDisconnect } = update;
+      const { connection } = update;
 
-      // Request code once on first update when not yet registered
+      // Request pairing code once socket is up
       if (!codeRequested && !sock.authState.creds.registered) {
         codeRequested = true;
         try {
-          await new Promise(r => setTimeout(r, 4000));
+          await new Promise(r => setTimeout(r, 3000));
           let code = await sock.requestPairingCode(cleanPhone);
           code = code?.match(/.{1,4}/g)?.join('-') || code;
-          const session = pairingSessions.get(sessionId);
-          if (session) {
-            session.pairingCode = code;
-
-            // START KEEP-ALIVE LOOP — sends a presence ping every 8s
-            // so Render doesn't kill the idle socket while user types code
-            session.keepAliveTimer = setInterval(async () => {
-              try {
-                if (!session.connected) {
-                  await sock.sendPresenceUpdate('available');
-                } else {
-                  clearInterval(session.keepAliveTimer);
-                }
-              } catch {
-                clearInterval(session.keepAliveTimer);
-              }
-            }, 8000);
-          }
+          sessionObj.pairingCode = code;
           console.log(`✅ Code for ${cleanPhone}: ${code}`);
+
+          // Keep-alive: send presence ping every 8s to prevent TCP timeout
+          sessionObj.keepAlive = setInterval(async () => {
+            if (sessionObj.connected) {
+              clearInterval(sessionObj.keepAlive);
+              return;
+            }
+            try {
+              await sock.sendPresenceUpdate('available');
+            } catch {
+              clearInterval(sessionObj.keepAlive);
+            }
+          }, 8000);
+
         } catch (e) {
           console.error('Code error:', e.message);
-          const session = pairingSessions.get(sessionId);
-          if (session) session.error = e.message;
+          sessionObj.error = 'Failed to get pairing code. Make sure this number is on WhatsApp.';
         }
       }
 
       if (connection === 'open') {
-        console.log(`✅ Paired: ${sessionId}`);
-        const session = pairingSessions.get(sessionId);
-        if (session) {
-          session.connected = true;
-          // Stop keep-alive loop
-          if (session.keepAliveTimer) clearInterval(session.keepAliveTimer);
+        console.log(`✅ Bot paired successfully for ${cleanPhone}`);
+        sessionObj.connected = true;
+        if (sessionObj.keepAlive) clearInterval(sessionObj.keepAlive);
 
-          const msg = `🎉 *Smiley Cymor Bot — Session Ready!*
+        // Save creds one final time to lock in the registered state
+        await saveCreds();
+
+        // Notify the user on WhatsApp
+        try {
+          const welcomeMsg = `🎉 *Smiley Cymor Bot — Successfully Paired!*
 
 ╔══════════════════════╗
-║   🔐 YOUR SESSION ID   ║
+║   ✅ BOT IS READY!   ║
 ╚══════════════════════╝
 
-*Copy this exactly:*
-\`\`\`
-${sessionId}
-\`\`\`
+Your bot is now connected and saved!
+No session ID needed — it auto-connects on every restart. 🚀
 
 ━━━━━━━━━━━━━━━━━━━━━━━
-📋 *DEPLOY STEPS:*
+🔥 *WHAT'S ACTIVE:*
 ━━━━━━━━━━━━━━━━━━━━━━━
-1️⃣ Copy the Session ID above
-2️⃣ Go to your Render dashboard
-3️⃣ Environment → Add: SESSION_ID
-4️⃣ Paste the session ID as value
-5️⃣ Save & redeploy — bot goes live! 🚀
+✅ 90+ Commands
+✅ AI Chat (Groq)
+✅ Economy System  
+✅ Games & Fun
+✅ Media Downloads
+✅ Group Management
+✅ Privacy Tools (.vv, ghost)
+✅ Deleted Msg Recovery
+✅ Auto Status View/Like
 
 ━━━━━━━━━━━━━━━━━━━━━━━
-🌐 *Platforms Supported:*
-▸ render.com  ▸ koyeb.com
-▸ heroku.com  ▸ railway.app
 
+Type *.menu* to see all commands!
+
+👑 Owner: Legendary Smiley Cymor
 📞 Support: wa.me/254784074568
 > 🤖 Powered by Cymor Tech Services`;
 
+          await sock.sendMessage(`${cleanPhone}@s.whatsapp.net`, { text: welcomeMsg });
+        } catch (e) {
+          console.error('Welcome DM error:', e.message);
+        }
+
+        // Notify owner too if different number
+        if (cleanPhone !== config.ownerNumber) {
           try {
-            await sock.sendMessage(`${cleanPhone}@s.whatsapp.net`, { text: msg });
-          } catch (e) {
-            console.error('DM error:', e.message);
-          }
+            await sock.sendMessage(`${config.ownerNumber}@s.whatsapp.net`, {
+              text: `📱 *New Bot Pairing!*\n\nNumber: +${cleanPhone}\nTime: ${new Date().toLocaleString()}\n\n> 🤖 Smiley Cymor Bot`,
+            });
+          } catch {}
         }
       }
 
       if (connection === 'close') {
-        const session = pairingSessions.get(sessionId);
-        if (session?.keepAliveTimer) clearInterval(session.keepAliveTimer);
-        console.log('Pairing socket closed:', sessionId);
+        if (sessionObj.keepAlive) clearInterval(sessionObj.keepAlive);
+        if (!sessionObj.connected) {
+          console.log(`Pairing socket closed before connecting for ${cleanPhone}`);
+        }
       }
     });
 
-    // Poll for pairing code up to 15s then respond
+    // Wait up to 15s for pairing code
     let waited = 0;
     while (waited < 15000) {
       await new Promise(r => setTimeout(r, 500));
       waited += 500;
-      const session = pairingSessions.get(sessionId);
-      if (session?.pairingCode) {
-        return res.json({ success: true, pairingCode: session.pairingCode, sessionId });
+      if (sessionObj.pairingCode) {
+        return res.json({ success: true, pairingCode: sessionObj.pairingCode });
       }
-      if (session?.error) {
-        return res.json({ success: false, error: 'Could not generate pairing code. Make sure this number is on WhatsApp and try again.' });
+      if (sessionObj.error) {
+        return res.json({ success: false, error: sessionObj.error });
       }
     }
 
-    return res.json({ success: false, error: 'Timed out generating code. Please try again.' });
+    return res.json({ success: false, error: 'Timed out. Please try again.' });
 
   } catch (err) {
     console.error('Pair error:', err.message);
@@ -174,10 +208,27 @@ ${sessionId}
   }
 });
 
-// Status check
-app.get('/api/status/:sessionId', (req, res) => {
-  const session = pairingSessions.get(req.params.sessionId);
-  res.json({ connected: session?.connected || false });
+// Check if bot is connected (polling from pair.html)
+app.get('/api/pairstatus', (req, res) => {
+  const phone = req.query.phone;
+  if (!phone) return res.json({ connected: false });
+  for (const session of pairingSessions.values()) {
+    if (session.phone === phone && session.connected) {
+      return res.json({ connected: true });
+    }
+  }
+  res.json({ connected: false });
+});
+
+// Check if bot is already paired (on page load)
+app.get('/api/botready', async (req, res) => {
+  try {
+    const { Session } = await import('./database/db.js');
+    const creds = await Session.findOne({ sessionId: `${BOT_SESSION_KEY}:creds` });
+    res.json({ ready: !!creds?.data?.registered });
+  } catch {
+    res.json({ ready: false });
+  }
 });
 
 // ─── ADMIN API ───────────────────────────────────────────────────────
